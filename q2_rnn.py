@@ -264,6 +264,7 @@ class RNNModel(NERModel):
         # with a GRU cell!
         if self.config.cell == "rnn":
             cell = RNNCell(Config.n_features * Config.embed_size, Config.hidden_size)
+            cell2 = RNNCell(Config.n_features * Config.embed_size, Config.hidden_size)
         elif self.config.cell == "gru":
             cell = GRUCell(Config.n_features * Config.embed_size, Config.hidden_size)
         else:
@@ -272,13 +273,14 @@ class RNNModel(NERModel):
         # Define U and b2 as variables.
         # Initialize state as vector of zeros.
         ### YOUR CODE HERE (~4-6 lines)
-        U  = tf.get_variable("U", initializer= tf.contrib.layers.xavier_initializer(), shape=(self.config.hidden_size, self.config.n_classes))
+        U  = tf.get_variable("U", initializer= tf.contrib.layers.xavier_initializer(), shape=(2*self.config.hidden_size, self.config.n_classes))
         b2 = tf.get_variable("b2", initializer= tf.zeros_initializer(), shape=(self.config.n_classes,))
-        state = tf.constant(0.0,shape=[1,300])
+        state = tf.zeros((tf.shape(x)[0], self.config.hidden_size))
         ### END YOUR CODE
 
         with tf.variable_scope("RNN"):
             y_t = []
+            y_t2 = []
             st = state
             for time_step in range(self.max_length):
                 ### YOUR CODE HERE (~6-10 lines)
@@ -286,13 +288,28 @@ class RNNModel(NERModel):
                     tf.get_variable_scope().reuse_variables()
                 o_t, h_t = cell(x[:,time_step,:], st, tf.get_variable_scope())
                 o_drop_t = tf.nn.dropout(o_t, self.dropout_placeholder)
-                y_t.append(tf.matmul(o_drop_t, U) + b2)
+                y_t.append(o_drop_t)
                 st = h_t
+            st = state
+        with tf.variable_scope("RNN2"):
+            for time_step in range(self.max_length-1,-1,-1):
+                ### YOUR CODE HERE (~6-10 lines)
+                if time_step < self.max_length-1:
+                    tf.get_variable_scope().reuse_variables()
+                o_t, h_t = cell2(x[:,time_step,:], st, tf.get_variable_scope())
+                o_drop_t = tf.nn.dropout(o_t, self.dropout_placeholder)
+                y_t2.append(o_drop_t)
+                st = h_t
+        y_t2.reverse()
+        y = []
+        for time_step in range(self.max_length):
+            o = tf.concat([y_t[time_step],y_t2[time_step]], 1)
+            y.append(tf.matmul(o,U) + b2)
                 ### END YOUR CODE
 
         # Make sure to reshape @preds here.
         ### YOUR CODE HERE (~2-4 lines)
-        preds = tf.stack(y_t,axis=1)
+        preds = tf.stack(y,axis=1)
         ### END YOUR CODE
 
         assert preds.get_shape().as_list() == [None, self.max_length, self.config.n_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.max_length, self.config.n_classes], preds.get_shape().as_list())
@@ -540,7 +557,7 @@ input> Germany 's representative to the European Union 's veterinary committee .
             while True:
                 # Create simple REPL
                 try:
-                    sentence = raw_input("input> ")
+                    sentence = input("input> ")
                     tokens = sentence.strip().split(" ")
                     for sentence, _, predictions in model.output(session, [(tokens, ["O"] * len(tokens))]):
                         predictions = [LBLS[l] for l in predictions]
