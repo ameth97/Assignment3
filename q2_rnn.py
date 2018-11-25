@@ -43,7 +43,7 @@ class Config:
     embed_size = 50
     hidden_size = 300
     batch_size = 32
-    n_epochs = 10
+    n_epochs = 20
     max_grad_norm = 10.
     lr = 0.001
 
@@ -265,6 +265,10 @@ class RNNModel(NERModel):
         if self.config.cell == "rnn":
             cell = RNNCell(Config.n_features * Config.embed_size, Config.hidden_size)
             cell2 = RNNCell(Config.n_features * Config.embed_size, Config.hidden_size)
+            cell3a = RNNCell(Config.n_features * Config.embed_size, Config.hidden_size)
+            cell4a = RNNCell(Config.n_features * Config.embed_size, Config.hidden_size)
+            cell3b = RNNCell(Config.n_features * Config.embed_size, Config.hidden_size)
+            cell4b = RNNCell(Config.n_features * Config.embed_size, Config.hidden_size)
         elif self.config.cell == "gru":
             cell = GRUCell(Config.n_features * Config.embed_size, Config.hidden_size)
         else:
@@ -281,6 +285,10 @@ class RNNModel(NERModel):
         with tf.variable_scope("RNN"):
             y_t = []
             y_t2 = []
+            y_t3a = []
+            y_t4a = []
+            y_t3b = []
+            y_t4b = []
             st = state
             for time_step in range(self.max_length):
                 ### YOUR CODE HERE (~6-10 lines)
@@ -300,10 +308,63 @@ class RNNModel(NERModel):
                 o_drop_t = tf.nn.dropout(o_t, self.dropout_placeholder)
                 y_t2.append(o_drop_t)
                 st = h_t
+        st = state
+        with tf.variable_scope("RNN3a"):
+            for time_step in range(0,self.max_length,1):
+                    ### YOUR CODE HERE (~6-10 lines)
+                    if time_step != 0:
+                        tf.get_variable_scope().reuse_variables()
+                    if time_step%2 == 0:
+                        o_t, h_t = cell3a(x[:,time_step,:], st, tf.get_variable_scope())
+                        o_drop_t = tf.nn.dropout(o_t, self.dropout_placeholder)
+                    else :
+                        o_drop_t = state
+                    y_t3a.append(o_drop_t)
+                    st = h_t
+        with tf.variable_scope("RNN3b"):
+            for time_step in range(0,self.max_length,1):
+                    ### YOUR CODE HERE (~6-10 lines)
+                    if time_step > 1:
+                        tf.get_variable_scope().reuse_variables()
+                    if time_step%2 != 0:
+                        o_t, h_t = cell3b(x[:,time_step,:], st, tf.get_variable_scope())
+                        o_drop_t = tf.nn.dropout(o_t, self.dropout_placeholder)
+                    else :
+                        o_drop_t = state
+                    y_t3b.append(o_drop_t)
+                    st = h_t
+        st = state
+        with tf.variable_scope("RNN4a"):
+            for time_step in range(self.max_length-1,-1,-1):
+                ### YOUR CODE HERE (~6-10 lines)
+                if time_step < self.max_length-2:
+                    tf.get_variable_scope().reuse_variables()
+                if time_step%2 == 0:
+                    o_t, h_t = cell4a(x[:,time_step,:], st, tf.get_variable_scope())
+                    o_drop_t = tf.nn.dropout(o_t, self.dropout_placeholder)
+                else:
+                    o_drop_t = state
+                y_t4a.append(o_drop_t)
+                st = h_t
+        st = state
+        with tf.variable_scope("RNN4b"):
+            for time_step in range(self.max_length-1,-1,-1):
+                ### YOUR CODE HERE (~6-10 lines)
+                if time_step < self.max_length-2:
+                    tf.get_variable_scope().reuse_variables()
+                if time_step%2 != 0:
+                    o_t, h_t = cell4b(x[:,time_step,:], st, tf.get_variable_scope())
+                    o_drop_t = tf.nn.dropout(o_t, self.dropout_placeholder)
+                else:
+                    o_drop_t = state
+                y_t4b.append(o_drop_t)
+                st = h_t
         y_t2.reverse()
+        y_t4a.reverse()
+        y_t4b.reverse()
         y = []
         for time_step in range(self.max_length):
-            o = tf.concat([y_t[time_step],y_t2[time_step]], 1)
+            o = tf.concat([(y_t[time_step]+y_t3a[time_step]+y_t3b[time_step])/2,(y_t2[time_step]+y_t4a[time_step]+y_t4b[time_step])/2], 1)
             y.append(tf.matmul(o,U) + b2)
                 ### END YOUR CODE
 
