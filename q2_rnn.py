@@ -271,6 +271,11 @@ class RNNModel(NERModel):
             cell4b = RNNCell(Config.n_features * Config.embed_size, Config.hidden_size)
         elif self.config.cell == "gru":
             cell = GRUCell(Config.n_features * Config.embed_size, Config.hidden_size)
+            cell2 = GRUCell(Config.n_features * Config.embed_size, Config.hidden_size)
+            cell3a = GRUCell(Config.n_features * Config.embed_size, Config.hidden_size)
+            cell4a = GRUCell(Config.n_features * Config.embed_size, Config.hidden_size)
+            cell3b = GRUCell(Config.n_features * Config.embed_size, Config.hidden_size)
+            cell4b = GRUCell(Config.n_features * Config.embed_size, Config.hidden_size)
         else:
             raise ValueError("Unsuppported cell type: " + self.config.cell)
 
@@ -281,14 +286,13 @@ class RNNModel(NERModel):
         b2 = tf.get_variable("b2", initializer= tf.zeros_initializer(), shape=(self.config.n_classes,))
         state = tf.zeros((tf.shape(x)[0], self.config.hidden_size))
         ### END YOUR CODE
-
+        y_t = []
+        y_t2 = []
+        y_t3a = []
+        y_t4a = []
+        y_t3b = []
+        y_t4b = []
         with tf.variable_scope("RNN"):
-            y_t = []
-            y_t2 = []
-            y_t3a = []
-            y_t4a = []
-            y_t3b = []
-            y_t4b = []
             st = state
             for time_step in range(self.max_length):
                 ### YOUR CODE HERE (~6-10 lines)

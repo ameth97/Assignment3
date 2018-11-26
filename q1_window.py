@@ -231,7 +231,8 @@ class WindowModel(NERModel):
         U  = tf.get_variable("U", initializer= tf.contrib.layers.xavier_initializer(), shape=(self.config.ht_size, self.config.n_classes))
         b2 = tf.get_variable("b2", initializer= tf.zeros_initializer(), shape=(self.config.n_classes,))
         h = tf.nn.relu(tf.matmul(x,W) + b1)
-        ht = tf.maximum(-.5, tf.matmul(h,Wt) + bt)
+        h_drop = tf.nn.dropout(h, dropout_rate)
+        ht = tf.maximum(-.5, tf.matmul(h_drop,Wt) + bt)
         ht_drop = tf.nn.dropout(ht, dropout_rate)
         pred = tf.matmul(ht_drop,U) + b2
         ### END YOUR CODE
